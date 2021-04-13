@@ -43,8 +43,17 @@ interface IGSDINFT is IERC721Enumerable {
         );
 
     /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
-    /// @param _borrower New address to set the borrower to.
-    function transferBorrower(address _borrower) external;
+    /// @param _receiver New address to set the borrower to.
+    function transfer(address _receiver) external;
+
+    /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
+    /// @dev See https://github.com/ethereum/EIPs/issues/677
+    /// @param _receiver New address to set the borrower to.
+    function transferAndCall(
+        address _receiver,
+        uint256 amount,
+        bytes calldata data
+    ) external;
 
     /// @notice Sets whether the fee is enabled. Only callable by governance.
     /// @param _isFeeEnabled Whether to enable the 0.3% fee.
