@@ -44,12 +44,12 @@ interface IGSDINFT is IERC721Enumerable {
 
     /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
     /// @param _receiver New address to set the borrower to.
-    function transfer(address _receiver) external;
+    function transferBorrower(address _receiver) external;
 
     /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
     /// @dev See https://github.com/ethereum/EIPs/issues/677
     /// @param _receiver New address to set the borrower to.
-    function transferAndCall(
+    function transferBorrowerAndCall(
         address _receiver,
         uint256 amount,
         bytes calldata data
