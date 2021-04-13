@@ -8,7 +8,7 @@ import "../interfaces/IGSDIWallet.sol";
 /// @author Crypto Shipwright
 interface IGSDINFT is IERC721Enumerable {
     /// @return chainId_ ChainID on which the contract is deployed.
-    function chainId() external view returns (uint8 chainId_);
+    function chainId() external view returns (uint96 chainId_);
 
     /// @return governance_ Address which sets governance parameters.
     function governance() external view returns (address governance_);
@@ -21,7 +21,7 @@ interface IGSDINFT is IERC721Enumerable {
     function treasury() external view returns (address treasury_);
 
     /// @param _id GSDI ID to view the chain ID for.
-    /// @return gsdiChainId_ ChainID for the GSDI. Leftmost byte of the GSDI id.
+    /// @return gsdiChainId_ ChainID for the GSDI. Leftmost 12 bytes of the GSDI id.
     function gsdiChainId(uint256 _id)
         external
         view
@@ -41,6 +41,10 @@ interface IGSDINFT is IERC721Enumerable {
             address borrower_,
             bool isInProposal
         );
+
+    /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
+    /// @param _borrower New address to set the borrower to.
+    function transferBorrower(address _borrower) external;
 
     /// @notice Sets whether the fee is enabled. Only callable by governance.
     /// @param _isFeeEnabled Whether to enable the 0.3% fee.
