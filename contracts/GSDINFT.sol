@@ -3,6 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "solidity-bytes-utils/contracts/BytesLib.sol";
@@ -16,6 +18,8 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   using Address for address;
   using Counters for Counters.Counter;
   using BytesLib for bytes;
+  using SafeERC20 for IERC20;
+  using SafeMath for uint256;
 
   Counters.Counter private _tokenIdTracker;
 
@@ -172,13 +176,18 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   /// @param _id GSDI to purchase.
   function purchase(uint256 _id) external override mustBeInProposal(_id) onlyValidChainId(_id) {
     uint256 price = metadata[_id].price;
-    
     IERC20 token = IERC20(metadata[_id].currency);
-    if (token.allowance(msg.sender, address(this)) < price) {
-      token.approve(address(this), price);
-    }
 
-    token.transferFrom(msg.sender, metadata[_id].borrower, price);
+    uint256 _before = token.balanceOf(address(this));
+    token.safeTransferFrom(msg.sender, address(this), price);
+    uint256 _after = token.balanceOf(address(this));
+    if (_after.sub(_before) < price) price = _after.sub(_before);
+    uint256 fee = isFeeEnabled ? price.mul(30).div(1000) : 0;
+    token.safeTransfer(metadata[_id].borrower, price - fee);
+
+    if (fee > 0) {
+      token.safeTransfer(treasury, fee);
+    }
     metadata[_id].isInProposal = false;
 
     emit Purchase(_id, msg.sender, price, metadata[_id].borrower);
@@ -189,15 +198,16 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   /// @param _id GSDI to cover.
   function cover(uint256 _id) external override mustNotBeInProposal(_id) onlyValidChainId(_id) {
     uint256 faceValue = metadata[_id].faceValue;
-    
+    IERC20 token = IERC20(metadata[_id].currency);
+
     metadata[_id].wallet.setExecutor(metadata[_id].borrower);
 
-    IERC20 token = IERC20(metadata[_id].currency);
-    if (token.allowance(msg.sender, address(this)) < faceValue) {
-      token.approve(address(this), faceValue);
-    }
+    uint256 _before = token.balanceOf(address(this));
+    token.safeTransferFrom(msg.sender, address(this), faceValue);
+    uint256 _after = token.balanceOf(address(this));
+    if (_after.sub(_before) < faceValue) faceValue = _after.sub(_before);
+    token.safeTransfer(metadata[_id].wallet.executor(), faceValue);
 
-    token.transferFrom(msg.sender, metadata[_id].wallet.executor(), faceValue);
     metadata[_id].wallet.setExecutor(msg.sender);
     burnProposal(_id);
 
