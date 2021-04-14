@@ -97,7 +97,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
   /// @param _receiver New address to set the borrower to.
-  function transferBorrower(address _receiver) external {
+  function transferBorrower(address _receiver) external override {
     
   }
 
@@ -108,7 +108,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
       address _receiver,
       uint256 amount,
       bytes calldata data
-  ) external {
+  ) external override {
 
   }
 
