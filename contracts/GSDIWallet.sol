@@ -51,7 +51,7 @@ contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
 
     /// @notice Sets the current executor. May only be called by executor or IGSDINFT.
     /// @param _executor New executor. IGSDINFT sets to itself to lock the wallet.
-    function setExecutor(address _executor) public override {
+    function setExecutor(address _executor) public override onlyExecutor {
         executor_ = _executor;
     }
 
