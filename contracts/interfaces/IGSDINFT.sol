@@ -21,7 +21,7 @@ interface IGSDINFT is IERC721Enumerable {
     function treasury() external view returns (address treasury_);
 
     /// @param _id GSDI ID to view the chain ID for.
-    /// @return gsdiChainId_ ChainID for the GSDI. Leftmost byte of the GSDI id.
+    /// @return gsdiChainId_ ChainID for the GSDI. Leftmost 12 bytes of the GSDI id.
     function gsdiChainId(uint256 _id)
         external
         view
@@ -41,6 +41,19 @@ interface IGSDINFT is IERC721Enumerable {
             address borrower_,
             bool isInProposal
         );
+
+    /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
+    /// @param _receiver New address to set the borrower to.
+    function transferBorrower(address _receiver) external;
+
+    /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
+    /// @dev See https://github.com/ethereum/EIPs/issues/677
+    /// @param _receiver New address to set the borrower to.
+    function transferBorrowerAndCall(
+        address _receiver,
+        uint256 amount,
+        bytes calldata data
+    ) external;
 
     /// @notice Sets whether the fee is enabled. Only callable by governance.
     /// @param _isFeeEnabled Whether to enable the 0.3% fee.
