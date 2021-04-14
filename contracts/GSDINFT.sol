@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "solidity-bytes-utils/contracts/BytesLib.sol";
+import "./interfaces/IERC677.sol";
 import "./interfaces/IGSDIWallet.sol";
 import "./interfaces/IGSDINFT.sol";
 
@@ -39,6 +40,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   mapping(uint256 => NFTMetadata) public override metadata;
 
+  event TransferBorrower(uint256 indexed _id, address indexed _borrower);
   event Propose(uint256 indexed _id, uint256 indexed _tokenId, address indexed _borrower, address _executor);
   event Cancel(uint256 indexed _id);
   event Purchase(uint256 indexed _id, address indexed _sender, uint256 indexed _value, address _receiver);
@@ -102,19 +104,24 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
   /// @param _receiver New address to set the borrower to.
-  function transferBorrower(address _receiver) external override {
+  function transferBorrower(uint256 _id, address _receiver) public override {
+    require(metadata[_id].borrower != msg.sender, "Sender must be borrower");
+    metadata[_id].borrower = _receiver;
     
+    emit TransferBorrower(_id, _receiver);
   }
 
   /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
   /// @dev See https://github.com/ethereum/EIPs/issues/677
   /// @param _receiver New address to set the borrower to.
   function transferBorrowerAndCall(
+      uint256 _id,
       address _receiver,
       uint256 amount,
       bytes calldata data
-  ) external override {
-
+  ) external override returns (bool success_) {
+    transferBorrower(_id, _receiver);
+    success_ = IERC677(msg.sender).transferAndCall(_receiver, amount, data);
   }
 
   /// @notice Mints a new GSDI in proposal to IGSDINFT. Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor. Only callable by the current IGSDIWallet executor.
