@@ -54,7 +54,7 @@ interface IGSDINFT is IERC721Enumerable {
         address _receiver,
         uint256 amount,
         bytes calldata data
-    ) external returns (bool success_);
+    ) external;
 
     /// @notice Sets whether the fee is enabled. Only callable by governance.
     /// @param _isFeeEnabled Whether to enable the 0.3% fee.

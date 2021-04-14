@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "solidity-bytes-utils/contracts/BytesLib.sol";
-import "./interfaces/IERC677.sol";
+import "./interfaces/IGSDIBorrowerReceiver.sol";
 import "./interfaces/IGSDIWallet.sol";
 import "./interfaces/IGSDINFT.sol";
 
@@ -109,6 +109,21 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     metadata[_id].borrower = _receiver;
     
     emit TransferBorrower(_id, _receiver);
+  }
+
+  /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
+  /// @dev See https://github.com/ethereum/EIPs/issues/677
+  /// @param _receiver New address to set the borrower to.
+  function transferBorrowerAndCall(
+      uint256 _id,
+      address _receiver,
+      uint256 amount,
+      bytes calldata data
+  ) external override {
+    transferBorrower(_id, _receiver);
+
+    IGSDIBorrowerReceiver receiver_ = IGSDIBorrowerReceiver(_receiver);
+    receiver_.onBorrowerTransferred(msg.sender, amount, data);
   }
 
   /// @notice Mints a new GSDI in proposal to IGSDINFT. Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor. Only callable by the current IGSDIWallet executor.
