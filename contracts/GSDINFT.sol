@@ -212,7 +212,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     token.transferFrom(msg.sender, address(this), faceValue);
     uint256 _after = token.balanceOf(address(this));
     if (_after.sub(_before) < faceValue) faceValue = _after.sub(_before);
-    require(token.transfer(metadata[_id].wallet.executor(), faceValue), "Transfer failed to current GSDI holder");
+    require(token.transfer(ownerOf(_id), faceValue), "Transfer failed to current GSDI holder");
 
     metadata[_id].wallet.setExecutor(ownerOf(_id));
     burnProposal(_id);
