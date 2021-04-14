@@ -14,7 +14,7 @@ interface IGSDINFT is IERC721Enumerable {
     function governance() external view returns (address governance_);
 
     /// @return isFeeEnabled_ Whether the 0.3% fee is enabled.
-    function isFeeEnabled() external view returns (address isFeeEnabled_);
+    function isFeeEnabled() external view returns (bool isFeeEnabled_);
 
     /// @notice Sets the treasury address to which the fee must be sent.
     /// @return treasury_ Address to receive the 0.3% fee.
@@ -25,7 +25,7 @@ interface IGSDINFT is IERC721Enumerable {
     function gsdiChainId(uint256 _id)
         external
         view
-        returns (uint8 gsdiChainId_);
+        returns (uint96 gsdiChainId_);
 
     /// @notice Returns the full onchain metadata for a GSDI or GSDI Proposal. Reverts if ID is from a different chain.
     /// @param _id ID of the GSDI. First byte is the chainID of the GSDI.
@@ -44,12 +44,13 @@ interface IGSDINFT is IERC721Enumerable {
 
     /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
     /// @param _receiver New address to set the borrower to.
-    function transferBorrower(address _receiver) external;
+    function transferBorrower(uint256 _id, address _receiver) external;
 
     /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
     /// @dev See https://github.com/ethereum/EIPs/issues/677
     /// @param _receiver New address to set the borrower to.
     function transferBorrowerAndCall(
+        uint256 _id,
         address _receiver,
         uint256 amount,
         bytes calldata data
@@ -74,6 +75,7 @@ interface IGSDINFT is IERC721Enumerable {
     /// @param _wallet Wallet containing collateral backing the GSDI.
     /// @param _currency Token currency for the price and face value.
     /// @param _borrower Address which will become the wallet executor after the GSDI is covered.
+    /// @return id_ ID of the newly minted IGSDINFT.
     function propose(
         uint256 _maturity,
         uint256 _faceValue,
@@ -81,7 +83,7 @@ interface IGSDINFT is IERC721Enumerable {
         IGSDIWallet _wallet,
         address _currency,
         address _borrower
-    ) external;
+    ) external returns (uint256 id_);
 
     ///@notice Cancels the GSDI proposal. Sender must be borrower. GSDI must currently be in proposal. GSDI must be on the current chain. Burns the GSDI.
     /// @param _id GSDI to cancel.
