@@ -111,19 +111,6 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     emit TransferBorrower(_id, _receiver);
   }
 
-  /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
-  /// @dev See https://github.com/ethereum/EIPs/issues/677
-  /// @param _receiver New address to set the borrower to.
-  function transferBorrowerAndCall(
-      uint256 _id,
-      address _receiver,
-      uint256 amount,
-      bytes calldata data
-  ) external override returns (bool success_) {
-    transferBorrower(_id, _receiver);
-    success_ = IERC677(msg.sender).transferAndCall(_receiver, amount, data);
-  }
-
   /// @notice Mints a new GSDI in proposal to IGSDINFT. Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor. Only callable by the current IGSDIWallet executor.
   /// @param _maturity Timestamp when the GSDI matures and the lender may seize the wallet.
   /// @param _faceValue Amount of currency borrower must pay to cover the GSDI.
