@@ -67,12 +67,7 @@ contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
         uint256 _value,
         bytes memory _data
     ) public override onlyExecutor returns (bytes memory data_, bool success_) {
-        data_ = safeExecute(_to, _value, _data);
-        success_ = true;
-
-        if (data_.length > 0) {
-            success_ = abi.decode(data_, (bool));
-        }
+        (success_, data_) = _to.call{value:_value}(_data);
     }
 
     /// @notice Executes an arbitrary transaction. May only be called by executor. Reverts on failure.
@@ -85,12 +80,15 @@ contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
         uint256 _value,
         bytes memory _data
     ) public override onlyExecutor returns (bytes memory data_) {
-        return
-            address(_to).functionCallWithValue(
-                _data,
-                _value,
-                "SafeERC20: low-level call failed"
-            );
+        bool success;
+        (success, data_) = _to.call{value:_value}(_data);
+        if (!success) {
+            // solhint-disable-next-line no-inline-assembly
+            assembly {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+        }
     }
 
     /// @notice Tranfers arbitrary IERC20 tokens from the wallet and reverts on failure. May only be called by executor.
