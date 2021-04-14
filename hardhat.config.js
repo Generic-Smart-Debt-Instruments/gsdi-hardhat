@@ -57,3 +57,4 @@ module.exports = {
   etherscan: {
     apiKey: "DUMQWHVAG4IXE2287UAKE3ZD144YJSZSTI"
   }
+}
