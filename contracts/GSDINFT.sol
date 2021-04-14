@@ -208,7 +208,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     if (_after.sub(_before) < faceValue) faceValue = _after.sub(_before);
     token.safeTransfer(metadata[_id].wallet.executor(), faceValue);
 
-    metadata[_id].wallet.setExecutor(msg.sender);
+    metadata[_id].wallet.setExecutor(ownerOf(_id));
     burnProposal(_id);
 
     emit Cover(_id, msg.sender, faceValue, metadata[_id].wallet.executor());
