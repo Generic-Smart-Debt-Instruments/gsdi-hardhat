@@ -3,18 +3,21 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "solidity-bytes-utils/contracts/BytesLib.sol";
+import "./interfaces/IGSDIBorrowerReceiver.sol";
 import "./interfaces/IGSDIWallet.sol";
 import "./interfaces/IGSDINFT.sol";
 
 /// @title Generic Smart Debt Instrument NFTs for lending against generic assets including vaults.
-/// @author Crypto Shipwright
+/// @author devneser
 contract GSDINFT is IGSDINFT, ERC721Enumerable {
   using Address for address;
   using Counters for Counters.Counter;
   using BytesLib for bytes;
+  using SafeMath for uint256;
 
   Counters.Counter private _tokenIdTracker;
 
@@ -39,6 +42,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   mapping(uint256 => NFTMetadata) public override metadata;
 
+  event TransferBorrower(uint256 indexed _id, address indexed _borrower);
   event Propose(uint256 indexed _id, uint256 indexed _tokenId, address indexed _borrower, address _executor);
   event Cancel(uint256 indexed _id);
   event Purchase(uint256 indexed _id, address indexed _sender, uint256 indexed _value, address _receiver);
@@ -52,7 +56,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   /// @param _id GSDI ID to view the chain ID for.
   /// @return gsdiChainId_ ChainID for the GSDI. Leftmost byte of the GSDI id.
-  function gsdiChainId(uint256 _id) external pure override returns (uint96 gsdiChainId_) {
+  function gsdiChainId(uint256 _id) public pure override returns (uint96 gsdiChainId_) {
     return uint96(_id >> 240);
   }
 
@@ -89,6 +93,11 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     _;
   }
 
+  modifier onlyValidChainId(uint256 _id) {
+    require(gsdiChainId(_id) == chainId, "GSDI chainID must be the same as GSDINFT chainID.");
+    _;
+  }
+
   function burnProposal (uint256 _id) internal {
     metadata[_id].isInProposal = false;
     _burn(_id);
@@ -97,19 +106,26 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
   /// @param _receiver New address to set the borrower to.
-  function transferBorrower(address _receiver) external override {
+  function transferBorrower(uint256 _id, address _receiver) public override {
+    require(metadata[_id].borrower != msg.sender, "Sender must be borrower");
+    metadata[_id].borrower = _receiver;
     
+    emit TransferBorrower(_id, _receiver);
   }
 
   /// @notice Changes the current borrower and calls onTokenTransfer(address,uint256,bytes) on receiver.
   /// @dev See https://github.com/ethereum/EIPs/issues/677
   /// @param _receiver New address to set the borrower to.
   function transferBorrowerAndCall(
+      uint256 _id,
       address _receiver,
       uint256 amount,
       bytes calldata data
   ) external override {
+    transferBorrower(_id, _receiver);
 
+    IGSDIBorrowerReceiver receiver_ = IGSDIBorrowerReceiver(_receiver);
+    receiver_.onBorrowerTransferred(msg.sender, amount, data);
   }
 
   /// @notice Mints a new GSDI in proposal to IGSDINFT. Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor. Only callable by the current IGSDIWallet executor.
@@ -127,6 +143,8 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     address _currency,
     address _borrower
   ) external override returns (uint256 id_) {
+    require(_wallet.executor() == msg.sender, "Wallet executor must be sender");
+
     uint256 tokenId = _tokenIdTracker.current(); 
     id_ = abi.encodePacked(tokenId >> 96, chainId << 160).toUint256(0);
 
@@ -143,7 +161,8 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   ///@notice Cancels the GSDI proposal. Sender must be borrower. GSDI must currently be in proposal. GSDI must be on the current chain. Burns the GSDI.
   /// @param _id GSDI to cancel.
-  function cancel(uint256 _id) external mustBeInProposal(_id) override {
+  function cancel(uint256 _id) external override mustBeInProposal(_id) onlyValidChainId(_id) {
+    require(msg.sender == metadata[_id].borrower, "Sender must be borrower");
     burnProposal(_id);
     
     emit Cancel(_id);
@@ -153,16 +172,24 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   /// @notice If governance has enabled the 0.3% fee, the sender must also transfer the fee to the governance's treasury.
   /// @dev Sender must approve the contract to transfer price of currency before call.
   /// @param _id GSDI to purchase.
-  function purchase(uint256 _id) external mustBeInProposal(_id) override {
+  function purchase(uint256 _id) external override mustBeInProposal(_id) onlyValidChainId(_id) {
     uint256 price = metadata[_id].price;
-    
     IERC20 token = IERC20(metadata[_id].currency);
+
     if (token.allowance(msg.sender, address(this)) < price) {
-      token.approve(address(this), price);
+      token.approve(address(this), price - token.allowance(msg.sender, address(this)));
     }
 
-    bytes memory transferPayload = abi.encodeWithSignature("transferFrom(address,address,unint256)", msg.sender, metadata[_id].borrower, price);
-    IGSDIWallet(metadata[_id].wallet).execute(metadata[_id].borrower, 1 ether, transferPayload);
+    uint256 _before = token.balanceOf(address(this));
+    token.transferFrom(msg.sender, address(this), price);
+    uint256 _after = token.balanceOf(address(this));
+    if (_after.sub(_before) < price) price = _after.sub(_before);
+    uint256 fee = isFeeEnabled ? price.mul(30).div(10000) : 0;
+    require(token.transfer(metadata[_id].borrower, price - fee), "Transfer failed to borrower");
+
+    if (fee > 0) {
+      require(token.transfer(treasury, fee), "Transfer failed to the governance's treasury");
+    }
     metadata[_id].isInProposal = false;
 
     emit Purchase(_id, msg.sender, price, metadata[_id].borrower);
@@ -171,18 +198,23 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   /// @notice Sets the borrower for IGSDIWallet to executor. The IGSDIWallet must not be in proposal. GSDI must be on the current chain. Sender transfers face value in currency to current GSDI holder. Burns the GSDI.
   /// @dev Sender must approve the contract to transfer face value of currency before call.
   /// @param _id GSDI to cover.
-  function cover(uint256 _id) external override mustNotBeInProposal(_id) {
+  function cover(uint256 _id) external override mustNotBeInProposal(_id) onlyValidChainId(_id) {
     uint256 faceValue = metadata[_id].faceValue;
-    
+    IERC20 token = IERC20(metadata[_id].currency);
+
     metadata[_id].wallet.setExecutor(metadata[_id].borrower);
 
-    IERC20 token = IERC20(metadata[_id].currency);
-    if (token.allowance(msg.sender, address(this)) < faceValue) {
-      token.approve(address(this), faceValue);
+   if (token.allowance(msg.sender, address(this)) < faceValue) {
+      token.approve(address(this), faceValue - token.allowance(msg.sender, address(this)));
     }
 
-    bytes memory transferPayload = abi.encodeWithSignature("transferFrom(address,address,unint256)", msg.sender, metadata[_id].wallet.executor(), faceValue);
-    IGSDIWallet(metadata[_id].wallet).execute(metadata[_id].wallet.executor(), 1 ether, transferPayload);
+    uint256 _before = token.balanceOf(address(this));
+    token.transferFrom(msg.sender, address(this), faceValue);
+    uint256 _after = token.balanceOf(address(this));
+    if (_after.sub(_before) < faceValue) faceValue = _after.sub(_before);
+    require(token.transfer(ownerOf(_id), faceValue), "Transfer failed to current GSDI holder");
+
+    metadata[_id].wallet.setExecutor(ownerOf(_id));
     burnProposal(_id);
 
     emit Cover(_id, msg.sender, faceValue, metadata[_id].wallet.executor());
@@ -190,9 +222,11 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
   /// @notice Sets the lender for IGSDIWallet to executor. The GSDI must be held by sender. GSDI must be on the current chain. Must be after maturity. Burns the GSDI.
   /// @param _id GSDI to seize.
-  function seize(uint256 _id) external override {
+  function seize(uint256 _id) external override onlyValidChainId(_id) {
     require(metadata[_id].wallet.executor() == msg.sender, "The GSDI must be held by sender.");
     require(metadata[_id].maturity > block.timestamp, "Must be after maturity.");
+
+    metadata[_id].wallet.setExecutor(msg.sender);
     burnProposal(_id);
     
     emit Seize(_id);
