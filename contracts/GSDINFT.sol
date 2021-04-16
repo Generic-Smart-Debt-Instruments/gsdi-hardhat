@@ -151,7 +151,14 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     metadata[id_] = NFTMetadata(_maturity, _faceValue, _price, _wallet, _currency, _borrower, true);
 
     // Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor.
-    _wallet.setExecutor(address(this));
+    // _wallet.setExecutor(address(this));
+    address(_wallet).functionDelegateCall(
+        abi.encodeWithSignature(
+            "setExecutor(address)",
+            address(this)
+        ),
+        "failed to set executor"
+    );
 
     _mint(_borrower, id_);
     _tokenIdTracker.increment();

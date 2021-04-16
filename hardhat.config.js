@@ -11,7 +11,12 @@ const keys = loadJsonFile.sync("./keys.json");
 module.exports = {
   defaultNetwork: "hardhat",
   networks: {
-    hardhat: {},
+    hardhat: {
+      forking: {
+        url: `https://mainnet.infura.io/v3/${keys.networks.mainnet.infuraKey}`,
+        blockNumber: 12252018
+      }
+    },
     ropsten: {
       url: `https://ropsten.infura.io/v3/${keys.networks.ropsten.infuraKey}`,
       accounts: [keys.networks.ropsten.privateKey],
