@@ -58,7 +58,7 @@ describe("GSDI Wallet Unit Tests", function () {
 
       await this.gsdiWallet.initialize(
         this.accounts.gsdiNft,
-        this.accounts.admin
+        this.accounts.other
       );
 
       await this.mockERC20.transfer(this.gsdiWallet.address, toBN(10000));
@@ -85,14 +85,26 @@ describe("GSDI Wallet Unit Tests", function () {
       const executor = await this.gsdiWallet.executor();
 
       expect(gsdiNft).to.equal(this.accounts.gsdiNft);
-      expect(executor).to.equal(this.accounts.admin);
+      expect(executor).to.equal(this.accounts.other);
+    });
+
+    it("Can change `executor`", async function () {
+      const before = await this.gsdiWallet.executor();
+
+      await expect(
+        this.gsdiWallet.setExecutor(this.accounts.admin)
+      ).to.be.revertedWith("only executor allowed");
+
+      await this.gsdiWallet
+        .connect(this.signers.other)
+        .setExecutor(this.accounts.admin);
+      const after = await this.gsdiWallet.executor();
+
+      expect(before).to.equal(this.accounts.other);
+      expect(after).to.equal(this.accounts.admin);
     });
 
     it("Can execute an arbitrary transaction", async function () {
-      const before = await this.mockERC20.allowance(
-        this.gsdiWallet.address,
-        this.accounts.gsdiNft
-      );
       const interface = new ethers.utils.Interface(MockERC20Artifact.abi);
       const payload = interface.encodeFunctionData("approve(address,uint256)", [
         this.accounts.gsdiNft,
@@ -103,9 +115,37 @@ describe("GSDI Wallet Unit Tests", function () {
         this.gsdiWallet.address,
         this.accounts.gsdiNft
       );
-      const amount = toNum(after) - toNum(before);
 
-      expect(amount).to.equal(amount, 100);
+      expect(toNum(after)).to.equal(100);
+    });
+
+    it("Can execute an arbitrary transaction using `safeExecute()`", async function () {
+      const interface = new ethers.utils.Interface(MockERC20Artifact.abi);
+      const fakePayload = "0xffff";
+      const payload = interface.encodeFunctionData("approve(address,uint256)", [
+        this.accounts.gsdiNft,
+        toBN(200),
+      ]);
+
+      await expect(
+        this.gsdiWallet.safeExecute(
+          this.mockERC20.address,
+          toBN(0),
+          fakePayload
+        )
+      ).to.be.reverted;
+
+      await this.gsdiWallet.safeExecute(
+        this.mockERC20.address,
+        toBN(0),
+        payload
+      );
+      const after = await this.mockERC20.allowance(
+        this.gsdiWallet.address,
+        this.accounts.gsdiNft
+      );
+
+      expect(toNum(after)).to.equal(200);
     });
 
     it("Can tranfer arbitrary ERC20 tokens", async function () {
