@@ -3,6 +3,7 @@ require("@nomiclabs/hardhat-web3"); //For openzeppelin
 require("@openzeppelin/hardhat-upgrades");
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
+require("solidity-coverage");
 
 const loadJsonFile = require("load-json-file");
 const keys = loadJsonFile.sync("./keys.json");
@@ -54,12 +55,6 @@ module.exports = {
     timeout: 20000,
   },
   etherscan: {
-    apiKey: "DUMQWHVAG4IXE2287UAKE3ZD144YJSZSTI",
-  },
-  dependencyCompiler: {
-    paths: [
-      "@uniswap/v2-periphery/contracts/UniswapV2Router02.sol",
-      "@uniswap/v2-core/contracts/UniswapV2Factory.sol",
-    ],
-  },
-};
+    apiKey: "DUMQWHVAG4IXE2287UAKE3ZD144YJSZSTI"
+  }
+}
