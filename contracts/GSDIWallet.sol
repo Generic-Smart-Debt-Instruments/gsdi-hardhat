@@ -20,39 +20,31 @@ contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
     using SafeMath for uint256;
     using Address for address;
 
-    address private gsdiNft_;
-    address private executor_;
+    address public override gsdiNft;
+    address public override executor;
 
     modifier onlyExecutor() {
-        require(msg.sender == executor_, "only executor allowed");
+        require(msg.sender == executor, "GSDIWallet: Only executor allowed");
         _;
     }
 
-    /// @notice Returns the gsdiNft contract.
-    /// @return gsdiNft_ Address of the IGSDINFT contract managing the wallet.
-    function gsdiNft() external view override returns (address) {
-        return gsdiNft_;
-    }
-
-    /// @notice Returns current executor of the IGSDIWallet.
-    /// @dev For GSDI dapps, guarantee that the wallet is not approved to transfer contained locked assets.
-    /// @return executor_ Current executor. May be a borrower, lender, dapp, or IGSDINFT when locked.
-    function executor() external view override returns (address) {
-        return executor_;
+    modifier onlyExecutorOrGsdiNft() {
+        require(msg.sender == executor || msg.sender == gsdiNft, "GSDIWallet: Only executor or GSDINft allowed");
+        _;
     }
 
     /// @notice New GSDI wallets are deployed as Open Zeppelin proxies. Initialize is called on creation.
     /// @param _gsdiNft of the IGSDINFT contract managing the wallet.
     /// @param _executor Current executor. May be a borrower, lender, dapp, or IGSDINFT when locked.
     function initialize(address _gsdiNft, address _executor) public override {
-        gsdiNft_ = _gsdiNft;
-        executor_ = _executor;
+        gsdiNft = _gsdiNft;
+        executor = _executor;
     }
 
     /// @notice Sets the current executor. May only be called by executor or IGSDINFT.
     /// @param _executor New executor. IGSDINFT sets to itself to lock the wallet.
-    function setExecutor(address _executor) public override onlyExecutor {
-        executor_ = _executor;
+    function setExecutor(address _executor) public override onlyExecutorOrGsdiNft {
+        executor = _executor;
     }
 
     /// @notice Executes an arbitrary transaction. May only be called by executor.

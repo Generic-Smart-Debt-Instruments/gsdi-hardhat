@@ -14,7 +14,7 @@ module.exports = {
     hardhat: {
       forking: {
         url: `https://mainnet.infura.io/v3/${keys.networks.mainnet.infuraKey}`,
-        blockNumber: 12252018
+        blockNumber: 12252735
       }
     },
     ropsten: {
