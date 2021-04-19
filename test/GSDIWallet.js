@@ -93,7 +93,7 @@ describe("GSDI Wallet Unit Tests", function () {
 
       await expect(
         this.gsdiWallet.setExecutor(this.accounts.admin)
-      ).to.be.revertedWith("only executor allowed");
+      ).to.be.revertedWith("GSDIWallet: Only executor or GSDINft allowed");
 
       await this.gsdiWallet
         .connect(this.signers.other)

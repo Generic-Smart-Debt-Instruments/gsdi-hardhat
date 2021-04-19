@@ -11,7 +11,11 @@ const keys = loadJsonFile.sync("./keys.json");
 module.exports = {
   defaultNetwork: "hardhat",
   networks: {
-    hardhat: {},
+    hardhat: {
+      forking: {
+        url: `https://mainnet.infura.io/v3/${keys.networks.mainnet.infuraKey}`,
+      }
+    },
     ropsten: {
       url: `https://ropsten.infura.io/v3/${keys.networks.ropsten.infuraKey}`,
       accounts: [keys.networks.ropsten.privateKey],
@@ -52,7 +56,7 @@ module.exports = {
     artifacts: "./artifacts",
   },
   mocha: {
-    timeout: 20000,
+    timeout: 100000,
   },
   etherscan: {
     apiKey: "DUMQWHVAG4IXE2287UAKE3ZD144YJSZSTI"
