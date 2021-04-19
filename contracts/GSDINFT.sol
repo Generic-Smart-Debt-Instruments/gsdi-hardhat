@@ -241,7 +241,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
         if (token.allowance(msg.sender, address(this)) < price) {
             token.approve(
                 address(this),
-                price - token.allowance(msg.sender, address(this))
+                price.sub(token.allowance(msg.sender, address(this)))
             );
         }
 
