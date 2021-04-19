@@ -38,7 +38,6 @@ interface IGSDINFT is IERC721Enumerable {
             uint256 price_,
             IGSDIWallet wallet_,
             address currency_,
-            address lender_,
             address borrower_,
             bool isInProposal
         );

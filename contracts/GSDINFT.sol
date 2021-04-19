@@ -36,7 +36,6 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
         uint256 price;
         IGSDIWallet wallet;
         address currency;
-        address lender;
         address borrower;
         bool isInProposal;
     }
@@ -197,7 +196,6 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
             _price,
             _wallet,
             _currency,
-            msg.sender,
             _borrower,
             true
         );
@@ -309,7 +307,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     /// @param _id GSDI to seize.
     function seize(uint256 _id) external override onlyValidChainId(_id) {
         require(
-            metadata[_id].lender == msg.sender,
+            ownerOf(_id) == msg.sender,
             "GSDINFT: The GSDI must be held by sender."
         );
         require(
