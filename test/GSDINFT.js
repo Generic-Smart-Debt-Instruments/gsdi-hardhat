@@ -47,7 +47,9 @@ describe("GSDINFT", () => {
     gsdiWallet = await gsdiWalletFactory.deploy();
     await gsdiWallet.deployed();
 
-    const mockBorrowerReceiverFactory = await ethers.getContractFactory("MockGSDIBorrowerReceiver")
+    const mockBorrowerReceiverFactory = await ethers.getContractFactory(
+      "MockGSDIBorrowerReceiver"
+    );
     borrower_receiver = await mockBorrowerReceiverFactory.deploy();
     await borrower_receiver.deployed();
 
@@ -163,7 +165,12 @@ describe("GSDINFT", () => {
   describe("transfer borrower and call", () => {
     it("Should revert if it's not a borrower", async () => {
       await expect(
-        gsdiNFT.transferBorrowerAndCall(gsdiId, borrower_receiver.address, 1000, [0])
+        gsdiNFT.transferBorrowerAndCall(
+          gsdiId,
+          borrower_receiver.address,
+          1000,
+          [0]
+        )
       ).to.be.revertedWith("Sender must be borrower");
     });
     it("Should be able to transfer borrower", async () => {
@@ -175,9 +182,11 @@ describe("GSDINFT", () => {
       metadata = await gsdiNFT.callStatic.metadata(gsdiId);
       expect(metadata[6]).to.be.equal(borrower_receiver.address);
 
-      expect(await borrower_receiver.callStatic.sender()).to.be.equal(borrower.address)
-      expect(await borrower_receiver.callStatic.value()).to.be.equal(1000)
-      expect(await borrower_receiver.callStatic.data()).to.be.equal("0x00")
+      expect(await borrower_receiver.callStatic.sender()).to.be.equal(
+        borrower.address
+      );
+      expect(await borrower_receiver.callStatic.value()).to.be.equal(1000);
+      expect(await borrower_receiver.callStatic.data()).to.be.equal("0x00");
     });
   });
 
