@@ -162,8 +162,10 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     ) external override {
         transferBorrower(_id, _receiver);
 
-        IGSDIBorrowerReceiver receiver_ = IGSDIBorrowerReceiver(_receiver);
-        receiver_.onBorrowerTransferred(msg.sender, amount, data);
+        if (isContract(_receiver)) {
+            IGSDIBorrowerReceiver receiver = IGSDIBorrowerReceiver(_receiver);
+            receiver.onBorrowerTransferred(msg.sender, amount, data);
+        }
     }
 
     /// @notice Mints a new GSDI in proposal to IGSDINFT. Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor. Only callable by the current IGSDIWallet executor.
@@ -319,5 +321,13 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
         burnProposal(_id);
 
         emit Seize(_id);
+    }
+
+    function isContract(address _addr) private view returns (bool hasCode_) {
+        uint256 length;
+        assembly {
+            length := extcodesize(_addr)
+        }
+        return length > 0;
     }
 }
