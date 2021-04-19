@@ -245,22 +245,16 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
             );
         }
 
-        uint256 _before = token.balanceOf(address(this));
-        token.transferFrom(msg.sender, address(this), price);
-        uint256 _after = token.balanceOf(address(this));
-        if (_after.sub(_before) < price) price = _after.sub(_before);
-        uint256 fee = isFeeEnabled ? price.mul(30).div(10000) : 0;
         require(
-            token.transfer(metadata[_id].borrower, price - fee),
+            token.transferFrom(msg.sender, metadata[_id].borrower, price),
             "GSDINFT: Transfer failed to borrower"
         );
+        uint256 fee = isFeeEnabled ? price.mul(30).div(10000) : 0;
+        require(
+            token.transferFrom(msg.sender, treasury, fee),
+            "GSDINFT: Transfer failed to the governance's treasury"
+        );
 
-        if (fee > 0) {
-            require(
-                token.transfer(treasury, fee),
-                "GSDINFT: Transfer failed to the governance's treasury"
-            );
-        }
         metadata[_id].isInProposal = false;
 
         emit Purchase(_id, msg.sender, price, metadata[_id].borrower);
