@@ -14,7 +14,6 @@ module.exports = {
     hardhat: {
       forking: {
         url: `https://mainnet.infura.io/v3/${keys.networks.mainnet.infuraKey}`,
-        blockNumber: 12252735
       }
     },
     ropsten: {
@@ -57,7 +56,7 @@ module.exports = {
     artifacts: "./artifacts",
   },
   mocha: {
-    timeout: 20000,
+    timeout: 100000,
   },
   etherscan: {
     apiKey: "DUMQWHVAG4IXE2287UAKE3ZD144YJSZSTI"

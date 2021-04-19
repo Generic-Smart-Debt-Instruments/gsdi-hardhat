@@ -36,6 +36,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     uint256 price;
     IGSDIWallet wallet;
     address currency;
+    address lender;
     address borrower;
     bool isInProposal;
   }
@@ -57,7 +58,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   /// @param _id GSDI ID to view the chain ID for.
   /// @return gsdiChainId_ ChainID for the GSDI. Leftmost byte of the GSDI id.
   function gsdiChainId(uint256 _id) public pure override returns (uint96 gsdiChainId_) {
-    return uint96(_id >> 240);
+    return uint96(_id >> 160);
   }
 
   /// @notice Sets whether the fee is enabled. Only callable by governance.
@@ -107,7 +108,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
   /// @param _receiver New address to set the borrower to.
   function transferBorrower(uint256 _id, address _receiver) public override {
-    require(metadata[_id].borrower != msg.sender, "Sender must be borrower");
+    require(metadata[_id].borrower == msg.sender, "Sender must be borrower");
     metadata[_id].borrower = _receiver;
     
     emit TransferBorrower(_id, _receiver);
@@ -146,9 +147,9 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     require(_wallet.executor() == msg.sender, "GSDINFT: Wallet executor must be sender");
 
     uint256 tokenId = _tokenIdTracker.current(); 
-    id_ = abi.encodePacked(tokenId >> 96, chainId << 160).toUint256(0);
+    id_ = abi.encodePacked(chainId, uint160(tokenId)).toUint256(0);
 
-    metadata[id_] = NFTMetadata(_maturity, _faceValue, _price, _wallet, _currency, _borrower, true);
+    metadata[id_] = NFTMetadata(_maturity, _faceValue, _price, _wallet, _currency, msg.sender, _borrower, true);
 
     // Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor.
     _wallet.setExecutor(address(this));
@@ -204,7 +205,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
 
     metadata[_id].wallet.setExecutor(metadata[_id].borrower);
 
-   if (token.allowance(msg.sender, address(this)) < faceValue) {
+    if (token.allowance(msg.sender, address(this)) < faceValue) {
       token.approve(address(this), faceValue - token.allowance(msg.sender, address(this)));
     }
 
@@ -223,8 +224,8 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
   /// @notice Sets the lender for IGSDIWallet to executor. The GSDI must be held by sender. GSDI must be on the current chain. Must be after maturity. Burns the GSDI.
   /// @param _id GSDI to seize.
   function seize(uint256 _id) external override onlyValidChainId(_id) {
-    require(metadata[_id].wallet.executor() == msg.sender, "GSDINFT: The GSDI must be held by sender.");
-    require(metadata[_id].maturity > block.timestamp, "GSDINFT: Must be after maturity.");
+    require(metadata[_id].lender == msg.sender, "GSDINFT: The GSDI must be held by sender.");
+    require(metadata[_id].maturity <= block.timestamp, "GSDINFT: Must be after maturity.");
 
     metadata[_id].wallet.setExecutor(msg.sender);
     burnProposal(_id);
