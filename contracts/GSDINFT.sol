@@ -135,7 +135,6 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     function burnProposal(uint256 _id) internal {
         metadata[_id].isInProposal = false;
         _burn(_id);
-        _tokenIdTracker.decrement();
     }
 
     /// @notice Changes the current borrower which will receive the GSDI after it is covered. Reverts if sender is not borrower.
