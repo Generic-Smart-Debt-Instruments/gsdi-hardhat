@@ -202,7 +202,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
         // Locks the IGSDIWallet by setting IGSDINFT as the wallet's executor.
         _wallet.setExecutor(address(this));
 
-        _mint(_borrower, id_);
+        _mint(address(this), id_);
         _tokenIdTracker.increment();
 
         emit Propose(id_, tokenId, _borrower, address(this));
@@ -257,6 +257,8 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
         );
 
         metadata[_id].isInProposal = false;
+
+        _transfer(address(this), msg.sender, _id);
 
         emit Purchase(_id, msg.sender, price, metadata[_id].borrower);
     }

@@ -34,6 +34,7 @@ describe("GSDINFT", () => {
     borrower = accounts[3];
     new_borrower = accounts[4];
     user = accounts[5];
+    lender = accounts[6];
 
     const network = await ethers.provider.getNetwork();
     chainId = BigNumber.from(network.chainId);
@@ -136,7 +137,7 @@ describe("GSDINFT", () => {
   describe("metadata", () => {
     it("Should be able to get metadata: in proposal", async () => {
       const metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      expect(metadata[7]).to.be.true;
+      expect(metadata[6]).to.be.true;
     });
   });
 
@@ -148,17 +149,17 @@ describe("GSDINFT", () => {
     });
     it("Should be able to transfer borrower", async () => {
       let metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      expect(metadata[6]).to.be.equal(borrower.address);
+      expect(metadata[5]).to.be.equal(borrower.address);
       await gsdiNFT
         .connect(borrower)
         .transferBorrower(gsdiId, new_borrower.address);
       metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      expect(metadata[6]).to.be.equal(new_borrower.address);
+      expect(metadata[5]).to.be.equal(new_borrower.address);
       await gsdiNFT
         .connect(new_borrower)
         .transferBorrower(gsdiId, borrower.address);
       metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      expect(metadata[6]).to.be.equal(borrower.address);
+      expect(metadata[5]).to.be.equal(borrower.address);
     });
   });
 
@@ -175,12 +176,12 @@ describe("GSDINFT", () => {
     });
     it("Should be able to transfer borrower", async () => {
       let metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      expect(metadata[6]).to.be.equal(borrower.address);
+      expect(metadata[5]).to.be.equal(borrower.address);
       await gsdiNFT
         .connect(borrower)
         .transferBorrowerAndCall(gsdiId, borrower_receiver.address, 1000, [0]);
       metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      expect(metadata[6]).to.be.equal(borrower_receiver.address);
+      expect(metadata[5]).to.be.equal(borrower_receiver.address);
 
       expect(await borrower_receiver.callStatic.sender()).to.be.equal(
         borrower.address
@@ -229,12 +230,12 @@ describe("GSDINFT", () => {
     });
     it("Metadata not in proposal", async () => {
       const metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      expect(metadata[7]).to.be.false;
+      expect(metadata[6]).to.be.false;
     });
   });
 
   describe("purchase", () => {
-    it("Should revert if insufficient allowance", async () => {
+    it("Should revert if insufficient balance", async () => {
       const gsdiWalletFactory = await ethers.getContractFactory("GSDIWallet");
       gsdiWallet = await gsdiWalletFactory.deploy();
       await gsdiWallet.deployed();
@@ -253,27 +254,32 @@ describe("GSDINFT", () => {
           weth_address,
           borrower.address
         );
+      gsdiId = gsdiId.add(1);
 
       expect(await gsdiWallet.callStatic.executor()).to.equal(gsdiNFT.address);
 
-      await expect(gsdiNFT.purchase(gsdiId)).to.be.reverted;
+      await expect(gsdiNFT.connect(lender).purchase(gsdiId)).to.be.revertedWith("Transaction reverted without a reason");
     });
 
     it("Should purchase", async () => {
       await gsdiNFT.setIsFeeEnabled(true);
       expect(await gsdiNFT.callStatic.isFeeEnabled()).to.equal(true);
 
-      const metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      await weth.deposit({ from: owner.address, value: metadata[2] });
-      await weth.approve(gsdiNFT.address, metadata[2]);
+      const fee = price.mul(BigNumber.from(30)).div(BigNumber.from(10000));
+      await weth.connect(lender).deposit({value: price.add(fee)});
+      await weth.connect(lender).approve(gsdiNFT.address, price.add(fee));
 
-      const balanceBefore = await weth.callStatic.balanceOf(owner.address);
+      const balanceBeforeBorrower = await weth.callStatic.balanceOf(borrower.address);
+      const balanceBeforeLender = await weth.callStatic.balanceOf(lender.address);
 
-      await gsdiNFT.purchase(gsdiId);
+      await gsdiNFT.connect(lender).purchase(gsdiId);
 
-      const balanceAfter = await weth.callStatic.balanceOf(owner.address);
+      const balanceAfterBorrower = await weth.callStatic.balanceOf(borrower.address);
+      const balanceAfterLender = await weth.callStatic.balanceOf(lender.address);
 
-      expect(balanceBefore.sub(price)).to.be.equal(balanceAfter);
+      expect(balanceBeforeBorrower.add(price)).to.be.equal(balanceAfterBorrower);
+      expect(balanceAfterLender.add(price.add(fee))).to.be.equal(balanceBeforeLender);
+      expect(await gsdiNFT.ownerOf(gsdiId)).to.be.equal(lender.address)
     });
   });
 
@@ -282,7 +288,7 @@ describe("GSDINFT", () => {
       await expect(gsdiNFT.connect(user).cover(gsdiId)).to.be.reverted;
     });
 
-    it("Should purchase", async () => {
+    it("Should cover", async () => {
       const metadata = await gsdiNFT.callStatic.metadata(gsdiId);
 
       await weth
@@ -290,7 +296,17 @@ describe("GSDINFT", () => {
         .deposit({ from: user.address, value: metadata[1] });
       await weth.connect(user).approve(gsdiNFT.address, metadata[1]);
 
+      const balanceBeforeBorrower = await weth.callStatic.balanceOf(user.address);
+      const balanceBeforeLender = await weth.callStatic.balanceOf(lender.address);
+
       await gsdiNFT.connect(user).cover(gsdiId);
+
+      const balanceAfterBorrower = await weth.callStatic.balanceOf(user.address);
+      const balanceAfterLender = await weth.callStatic.balanceOf(lender.address);
+
+      expect(balanceAfterBorrower.add(metadata[1])).to.be.equal(balanceBeforeBorrower);
+      expect(balanceBeforeLender.add(metadata[1])).to.be.equal(balanceAfterLender);
+      await expect(gsdiNFT.ownerOf(gsdiId)).to.be.revertedWith("ERC721: owner query for nonexistent token");
     });
   });
 
@@ -314,12 +330,13 @@ describe("GSDINFT", () => {
           weth_address,
           borrower.address
         );
+      gsdiId = gsdiId.add(1);
+      
+      const fee = price.mul(BigNumber.from(30)).div(BigNumber.from(10000));
+      await weth.connect(lender).deposit({value: price.add(fee)});
+      await weth.connect(lender).approve(gsdiNFT.address, price.add(fee));
 
-      const metadata = await gsdiNFT.callStatic.metadata(gsdiId);
-      await weth.deposit({ from: owner.address, value: metadata[2] });
-      await weth.approve(gsdiNFT.address, metadata[2]);
-
-      await gsdiNFT.purchase(gsdiId);
+      await gsdiNFT.connect(lender).purchase(gsdiId);
 
       await expect(gsdiNFT.connect(user).seize(gsdiId)).to.be.revertedWith(
         "GSDINFT: The GSDI must be held by sender."
@@ -327,7 +344,7 @@ describe("GSDINFT", () => {
     });
 
     it("Should revert if invalid maturity", async () => {
-      await expect(gsdiNFT.connect(executor).seize(gsdiId)).to.be.revertedWith(
+      await expect(gsdiNFT.connect(lender).seize(gsdiId)).to.be.revertedWith(
         "GSDINFT: Must be after maturity."
       );
     });
@@ -338,12 +355,14 @@ describe("GSDINFT", () => {
       expect(await gsdiWallet.callStatic.executor()).to.be.equal(
         gsdiNFT.address
       );
+      expect(await gsdiNFT.ownerOf(gsdiId)).to.be.equal(lender.address);
 
-      await gsdiNFT.connect(executor).seize(gsdiId);
+      await gsdiNFT.connect(lender).seize(gsdiId);
 
       expect(await gsdiWallet.callStatic.executor()).to.be.equal(
-        executor.address
+        lender.address
       );
+      await expect(gsdiNFT.ownerOf(gsdiId)).to.be.revertedWith("ERC721: owner query for nonexistent token");
     });
   });
 });
