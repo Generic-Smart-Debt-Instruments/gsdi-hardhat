@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "solidity-bytes-utils/contracts/BytesLib.sol";
 import "./interfaces/IGSDIBorrowerReceiver.sol";
 import "./interfaces/IGSDIWallet.sol";
@@ -13,8 +13,8 @@ import "./interfaces/IGSDINFT.sol";
 
 /// @title Generic Smart Debt Instrument NFTs for lending against generic assets including vaults.
 /// @author devneser
-contract GSDINFT is IGSDINFT, ERC721Enumerable {
-    using Address for address;
+contract GSDINFT is IGSDINFT, ERC721EnumerableUpgradeable {
+    using AddressUpgradeable for address;
     using Counters for Counters.Counter;
     using BytesLib for bytes;
     using SafeMath for uint256;
@@ -22,7 +22,7 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     Counters.Counter private _tokenIdTracker;
 
     /// @notice ChainID on which the contract is deployed
-    uint96 public immutable override chainId;
+    uint96 public override chainId;
     /// @notice  Whether the 0.3% fee is enabled
     bool public override isFeeEnabled;
     /// @notice Address which sets governance parameters
@@ -65,8 +65,9 @@ contract GSDINFT is IGSDINFT, ERC721Enumerable {
     event Seize(uint256 indexed _id);
 
     /// @param _chainId ChainID on which the contract being deployed
-    constructor(uint96 _chainId) ERC721("GSDI NFT", "GSDINFT") {
+    function initialize(uint96 _chainId) public initializer {
         chainId = _chainId;
+        __ERC721_init("GSDI NFT", "GSDINFT");
     }
 
     /// @param _id GSDI ID to view the chain ID for.

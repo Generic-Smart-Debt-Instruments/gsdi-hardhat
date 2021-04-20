@@ -1,7 +1,7 @@
 const chai = require("chai");
 const { solidity } = require("ethereum-waffle");
 const { time } = require("@openzeppelin/test-helpers");
-const { ethers } = require("hardhat");
+const { ethers, upgrades } = require("hardhat");
 const { BigNumber } = require("ethers");
 
 const { expect } = chai;
@@ -41,11 +41,11 @@ describe("GSDINFT", () => {
     gsdiId = chainId.mul(BigNumber.from(2).pow(160));
 
     const gsdiNFTFactory = await ethers.getContractFactory("GSDINFT");
-    gsdiNFT = await gsdiNFTFactory.deploy(chainId.toString());
+    gsdiNFT = await upgrades.deployProxy(gsdiNFTFactory, [chainId.toString()]);
     await gsdiNFT.deployed();
 
     const gsdiWalletFactory = await ethers.getContractFactory("GSDIWallet");
-    gsdiWallet = await gsdiWalletFactory.deploy();
+    gsdiWallet = await upgrades.deployProxy(gsdiWalletFactory,[gsdiNFT.address, executor.address]);
     await gsdiWallet.deployed();
 
     const mockBorrowerReceiverFactory = await ethers.getContractFactory(
@@ -53,8 +53,6 @@ describe("GSDINFT", () => {
     );
     borrower_receiver = await mockBorrowerReceiverFactory.deploy();
     await borrower_receiver.deployed();
-
-    await gsdiWallet.initialize(gsdiNFT.address, executor.address);
 
     weth = await ethers.getContractAt("IWETH", weth_address);
   });

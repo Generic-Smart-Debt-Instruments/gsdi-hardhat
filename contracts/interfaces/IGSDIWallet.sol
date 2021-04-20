@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
 
 /// @title Smart wallet to hold generic assets.
 /// @author Crypto Shipwright
-interface IGSDIWallet is IERC721Receiver, IERC1155Receiver {
+interface IGSDIWallet is
+    IERC721ReceiverUpgradeable,
+    IERC1155ReceiverUpgradeable
+{
     /// @notice Returns the gsdiNft contract.
     /// @return gsdiNft_ Address of the IGSDINFT contract managing the wallet.
     function gsdiNft() external view returns (address gsdiNft_);
