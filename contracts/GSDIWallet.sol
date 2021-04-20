@@ -4,21 +4,24 @@ pragma solidity ^0.8.0;
 import "./interfaces/IGSDIWallet.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "@openzeppelin/contracts/token/ERC721/utils/ERC721Holder.sol";
-import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/utils/ERC721HolderUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/utils/ERC1155HolderUpgradeable.sol";
 
 /// @title Smart wallet to hold generic assets.
 /// @author jkp
 
-contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
+contract GSDIWallet is
+    IGSDIWallet,
+    ERC721HolderUpgradeable,
+    ERC1155HolderUpgradeable
+{
     using SafeMath for uint256;
-    using Address for address;
+    using AddressUpgradeable for address;
 
     address public override gsdiNft;
     address public override executor;
@@ -29,21 +32,34 @@ contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
     }
 
     modifier onlyExecutorOrGsdiNft() {
-        require(msg.sender == executor || msg.sender == gsdiNft, "GSDIWallet: Only executor or GSDINft allowed");
+        require(
+            msg.sender == executor || msg.sender == gsdiNft,
+            "GSDIWallet: Only executor or GSDINft allowed"
+        );
         _;
     }
 
     /// @notice New GSDI wallets are deployed as Open Zeppelin proxies. Initialize is called on creation.
     /// @param _gsdiNft of the IGSDINFT contract managing the wallet.
     /// @param _executor Current executor. May be a borrower, lender, dapp, or IGSDINFT when locked.
-    function initialize(address _gsdiNft, address _executor) public override {
+    function initialize(address _gsdiNft, address _executor)
+        public
+        override
+        initializer
+    {
         gsdiNft = _gsdiNft;
         executor = _executor;
+        __ERC721Holder_init();
+        __ERC1155Holder_init();
     }
 
     /// @notice Sets the current executor. May only be called by executor or IGSDINFT.
     /// @param _executor New executor. IGSDINFT sets to itself to lock the wallet.
-    function setExecutor(address _executor) public override onlyExecutorOrGsdiNft {
+    function setExecutor(address _executor)
+        public
+        override
+        onlyExecutorOrGsdiNft
+    {
         executor = _executor;
     }
 
@@ -59,7 +75,7 @@ contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
         uint256 _value,
         bytes memory _data
     ) public override onlyExecutor returns (bytes memory data_, bool success_) {
-        (success_, data_) = _to.call{value:_value}(_data);
+        (success_, data_) = _to.call{value: _value}(_data);
     }
 
     /// @notice Executes an arbitrary transaction. May only be called by executor. Reverts on failure.
@@ -73,7 +89,7 @@ contract GSDIWallet is Initializable, IGSDIWallet, ERC721Holder, ERC1155Holder {
         bytes memory _data
     ) public override onlyExecutor returns (bytes memory data_) {
         bool success;
-        (success, data_) = _to.call{value:_value}(_data);
+        (success, data_) = _to.call{value: _value}(_data);
         if (!success) {
             // solhint-disable-next-line no-inline-assembly
             assembly {

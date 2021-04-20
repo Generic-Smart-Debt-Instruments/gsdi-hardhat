@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721EnumerableUpgradeable.sol";
 import "../interfaces/IGSDIWallet.sol";
 
 /// @title Generic Smart Debt Instrument NFTs for lending against generic assets including vaults.
 /// @author Crypto Shipwright
-interface IGSDINFT is IERC721Enumerable {
+interface IGSDINFT is IERC721EnumerableUpgradeable {
     /// @return chainId_ ChainID on which the contract is deployed.
     function chainId() external view returns (uint96 chainId_);
 
