@@ -70,6 +70,12 @@ contract GSDINFT is IGSDINFT, ERC721EnumerableUpgradeable {
         __ERC721_init("GSDI NFT", "GSDINFT");
     }
 
+    /// @param _id ID to check if it exists.
+    /// @return exists_ Whether the GSDI exists.
+    function exists(uint256 _id) external view override returns (bool exists_) {
+        return _exists(_id);
+    }
+
     /// @param _id GSDI ID to view the chain ID for.
     /// @return gsdiChainId_ ChainID for the GSDI. Leftmost byte of the GSDI id.
     function gsdiChainId(uint256 _id)

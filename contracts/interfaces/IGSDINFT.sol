@@ -7,6 +7,10 @@ import "../interfaces/IGSDIWallet.sol";
 /// @title Generic Smart Debt Instrument NFTs for lending against generic assets including vaults.
 /// @author Crypto Shipwright
 interface IGSDINFT is IERC721EnumerableUpgradeable {
+    /// @param _id ID to check if it exists.
+    /// @return exists_ Whether the GSDI exists.
+    function exists(uint256 _id) external view returns (bool exists_);
+
     /// @return chainId_ ChainID on which the contract is deployed.
     function chainId() external view returns (uint96 chainId_);
 
